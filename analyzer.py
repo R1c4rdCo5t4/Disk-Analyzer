@@ -13,19 +13,16 @@ class FileSystem:
         return sum(self.directories.values()) + sum(self.files.values())
 
 
-def get_dir_size(path: str = '.', files = True, dirs = True, min_size = 0, extensions = []) -> FileSystem:
+def get_dir_size(path: str = ".") -> FileSystem:
     fs = FileSystem()
     try:
         with os.scandir(path) as it:
             for entry in it:
-                if entry.is_file() and files:
-                    if entry.stat().st_size >= (min_size * 1024 * 1024):
-                        if not extensions or entry.name.split(".")[-1] in extensions:
-                            fs.files[entry.name] = entry.stat().st_size
+                if entry.is_file():
+                    fs.files[entry.name] = entry.stat().st_size
 
-                elif entry.is_dir() and dirs:
-                    if entry.stat().st_size >= (min_size * 1024 * 1024):
-                        fs.directories[entry.name] = get_dir_size(entry.path).total_size
+                elif entry.is_dir():
+                    fs.directories[entry.name] = get_dir_size(entry.path).total_size
     except PermissionError:
         pass
 
