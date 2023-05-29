@@ -1,66 +1,43 @@
-import os
-import math
-from dataclasses import dataclass, field
+from analyzer import *
+import argparse
 
-@dataclass
-class FileSystem:
-    directories: dict[str, int] = field(default_factory=dict)
-    files: dict[str, int] = field(default_factory=dict)
-
-    @property
-    def total_size(self) -> int:
-        return sum(self.directories.values()) + sum(self.files.values())
-
-
-def get_dir_size(path: str = '.') -> FileSystem:
-    fs = FileSystem()
-    try:
-        with os.scandir(path) as it:
-            for entry in it:
-                if entry.is_file():
-                    fs.files[entry.name] = entry.stat().st_size
-        
-                elif entry.is_dir():
-                    fs.directories[entry.name] = get_dir_size(entry.path).total_size
-    except PermissionError:
-        pass
-
-    return fs
+def get_arguments():
+    parser = argparse.ArgumentParser(description="Disk Analyzer")
+    parser.add_argument("path", type=str, help="Path to the directory to analyze")
+    parser.add_argument("--m", type=int, default=0, help="Minimum file size to consider (in MB)")
+    parser.add_argument("--r", action="store_true", help="Sort file/folder sizes in reverse order")
+    parser.add_argument("--f", action="store_true", help="Display only file sizes")
+    parser.add_argument("--d", action="store_true", help="Display only folder sizes")
+    parser.add_argument("--ext", nargs="+", type=str, help="Filter files by specific extensions")
+    return parser.parse_args()
 
 
-def convert_size(size_bytes: int) -> str:
-    if size_bytes == 0: return "0B"
-    units = ("B", "KB", "MB", "GB", "TB")
-    i = int(math.floor(math.log(size_bytes, 1024)))
-    p = math.pow(1024, i)
-    s = round(size_bytes / p, 2)
-    return f"{s} {units[i]}"
+def main():
 
-def sort_dict(d: dict):
-    return dict(sorted(d.items(), key=lambda item: item[1], reverse=True))
+    args = get_arguments()
+    fs = get_dir_size(args.path, args.f, args.d, args.m, args.ext)
+
+    if args.d:
+        dir_sizes = sort_dict(fs.directories, args.r)
+        print("### Directory sizes: ###")
+        for dir_name, dir_size in dir_sizes.items():
+            if dir_size == 0:
+                continue
+
+            print(f"{convert_size(dir_size) - {dir_name}}")
+
+    if args.f:
+        file_sizes = sort_dict(fs.files, args.r)
+        print("\n### File sizes: ###")
+        for file_name, file_size in file_sizes.items():
+            if file_size == 0:
+                continue
+
+            print(f"{convert_size(file_size)} - {file_name}")
 
 
 
-fs = get_dir_size('C:/Users/Ricardo/Downloads')
-dir_sizes = sort_dict(fs.directories)
-file_sizes = sort_dict(fs.files)
-
-print("### Directory sizes: ###")
-for dir_name, dir_size in dir_sizes.items():
-    if dir_size == 0:
-        continue
-
-    converted_size = convert_size(dir_size)
-    print(f"{dir_name}: {converted_size}")
-
-print("\n### File sizes: ###")
-for file_name, file_size in file_sizes.items():
-    if file_size == 0:
-        continue
-
-    converted_size = convert_size(file_size)
-    print(f"{file_name}: {converted_size}")
-
-
+if __name__ == "__main__":
+    main()
 
 
